@@ -15,10 +15,14 @@ browser.runtime.onMessage.addListener(
 
     } catch (error) {
 
+      console.error(
+        "Attendance Calculator:",
+        error
+      );
+
       return {
         error: error.message
       };
-
     }
   }
 );
@@ -26,32 +30,64 @@ browser.runtime.onMessage.addListener(
 
 function readPunchLogs() {
 
-  const items = document.querySelectorAll(
-    ".ah-log-timeline-list-item"
+  /*
+   * IMPORTANT:
+   *
+   * Instead of searching the entire page for
+   * every .ah-log-timeline-list-item,
+   * first find the actual punch-log <ul>.
+   *
+   * This prevents duplicate Angular-rendered
+   * elements from being counted.
+   */
+
+  const lists = document.querySelectorAll(
+    "ul.ah-log-timeline-list"
   );
+
+
+  if (!lists.length) {
+
+    throw new Error(
+      "Punch log list was not found."
+    );
+  }
+
+
+  /*
+   * Use the first actual punch-log list.
+   */
+
+  const list = lists[0];
+
+
+  const items = list.querySelectorAll(
+    ":scope > li.ah-log-timeline-list-item"
+  );
+
 
   if (!items.length) {
 
     throw new Error(
-      "No punch logs found. Make sure the attendance page is open."
+      "No punch entries were found."
     );
   }
 
+
   const logs = [];
+
 
   items.forEach((item) => {
 
     /*
-     * Get the time.
-     *
-     * Example:
-     * 12:57:11 PM
+     * Get punch time.
      */
 
     const timeElement =
       item.querySelector(
         ".ah-log-timeline-list-item-start .ah-text"
       );
+
 
     /*
      * Get Punch In / Punch Out.
@@ -62,17 +98,24 @@ function readPunchLogs() {
         ".ah-text-data"
       );
 
+
     if (!timeElement || !typeElement) {
       return;
     }
 
+
     const timeText =
       timeElement.textContent.trim();
 
-    const typeText =
-      typeElement.textContent.trim().toLowerCase();
 
-    let type;
+    const typeText =
+      typeElement.textContent
+        .trim()
+        .toLowerCase();
+
+
+    let type = null;
+
 
     if (typeText === "punch in") {
 
@@ -87,37 +130,14 @@ function readPunchLogs() {
       return;
     }
 
-    const time =
-      parseTime(timeText);
-
-    /*
-     * Get break if available.
-     */
-
-    const breakElement =
-      item.querySelector(
-        ".ah-att-break-time"
-      );
-
-    let breakSeconds = 0;
-
-    if (breakElement) {
-
-      breakSeconds =
-        parseBreakTime(
-          breakElement.textContent.trim()
-        );
-    }
 
     logs.push({
 
       type: type,
 
-      time: time,
+      time: parseTime(timeText),
 
-      displayTime: timeText,
-
-      breakSeconds: breakSeconds
+      displayTime: timeText
 
     });
 
@@ -127,16 +147,17 @@ function readPunchLogs() {
   if (!logs.length) {
 
     throw new Error(
-      "Punch entries were found, but no valid Punch In/Out times were detected."
+      "No valid Punch In/Punch Out records found."
     );
   }
 
 
   /*
-   * The website displays newest first.
+   * The website shows newest first.
    *
-   * We reverse/sort them so that calculations
-   * happen oldest → newest.
+   * Sort:
+   *
+   * oldest → newest
    */
 
   logs.sort(
@@ -144,13 +165,50 @@ function readPunchLogs() {
   );
 
 
+  /*
+   * Remove accidental duplicate punches.
+   *
+   * For example, if Angular happens to expose:
+   *
+   * 09:10 IN
+   * 09:10 IN
+   *
+   * only keep one.
+   */
+
+  const uniqueLogs = [];
+
+
+  for (const log of logs) {
+
+    const previous =
+      uniqueLogs[
+        uniqueLogs.length - 1
+      ];
+
+
+    if (
+      previous &&
+      previous.type === log.type &&
+      previous.time.getTime() ===
+        log.time.getTime()
+    ) {
+
+      continue;
+    }
+
+
+    uniqueLogs.push(log);
+  }
+
+
   console.log(
     "Attendance Calculator - detected logs:",
-    logs
+    uniqueLogs
   );
 
 
-  return logs;
+  return uniqueLogs;
 }
 
 
@@ -160,6 +218,7 @@ function parseTime(timeString) {
     timeString.match(
       /^(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)$/i
     );
+
 
   if (!match) {
 
@@ -173,32 +232,44 @@ function parseTime(timeString) {
   let hour =
     Number(match[1]);
 
+
   const minute =
     Number(match[2]);
 
+
   const second =
     Number(match[3]);
+
 
   const period =
     match[4].toUpperCase();
 
 
-  if (period === "PM" && hour !== 12) {
+  /*
+   * Convert 12-hour time to 24-hour time.
+   */
+
+  if (
+    period === "PM" &&
+    hour !== 12
+  ) {
 
     hour += 12;
-
   }
 
 
-  if (period === "AM" && hour === 12) {
+  if (
+    period === "AM" &&
+    hour === 12
+  ) {
 
     hour = 0;
-
   }
 
 
   const date =
     new Date();
+
 
   date.setHours(
     hour,
@@ -209,40 +280,4 @@ function parseTime(timeString) {
 
 
   return date;
-}
-
-
-function parseBreakTime(text) {
-
-  /*
-   * Example:
-   *
-   * 00h 11m 44s Break
-   */
-
-  const match =
-    text.match(
-      /(\d+)h\s*(\d+)m\s*(\d+)s/i
-    );
-
-  if (!match) {
-    return 0;
-  }
-
-
-  const hours =
-    Number(match[1]);
-
-  const minutes =
-    Number(match[2]);
-
-  const seconds =
-    Number(match[3]);
-
-
-  return (
-    hours * 3600 +
-    minutes * 60 +
-    seconds
-  );
 }

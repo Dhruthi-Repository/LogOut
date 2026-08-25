@@ -1,6 +1,9 @@
 document
   .getElementById("calculate")
-  .addEventListener("click", calculate);
+  .addEventListener(
+    "click",
+    calculate
+  );
 
 
 async function calculate() {
@@ -33,13 +36,9 @@ async function calculate() {
     }
 
 
-    const tab =
-      tabs[0];
-
-
     const response =
       await browser.tabs.sendMessage(
-        tab.id,
+        tabs[0].id,
         {
           action: "getPunchLogs"
         }
@@ -88,14 +87,6 @@ function calculateAttendance(
   requiredHours
 ) {
 
-  if (!logs || logs.length === 0) {
-
-    throw new Error(
-      "No punch logs found."
-    );
-  }
-
-
   const requiredSeconds =
     requiredHours * 60 * 60;
 
@@ -106,12 +97,22 @@ function calculateAttendance(
 
 
   /*
-   * Logs are oldest → newest.
+   * Work calculation:
+   *
+   * Punch In
+   *     ↓
+   * Punch Out
+   *
+   * = worked duration
    */
 
   for (const log of logs) {
 
     if (log.type === "in") {
+
+      /*
+       * If we find an IN, remember it.
+       */
 
       currentPunchIn =
         log.time;
@@ -124,20 +125,24 @@ function calculateAttendance(
       currentPunchIn !== null
     ) {
 
-      const seconds =
+      const workedSeconds =
         (
           log.time -
           currentPunchIn
         ) / 1000;
 
 
-      if (seconds > 0) {
+      if (workedSeconds > 0) {
 
         totalWorkedSeconds +=
-          seconds;
+          workedSeconds;
 
       }
 
+
+      /*
+       * This working period is complete.
+       */
 
       currentPunchIn = null;
     }
@@ -146,7 +151,8 @@ function calculateAttendance(
 
 
   /*
-   * Determine current status.
+   * If currentPunchIn is not null,
+   * the latest punch is Punch In.
    */
 
   const currentlyWorking =
@@ -154,8 +160,7 @@ function calculateAttendance(
 
 
   /*
-   * If currently punched IN,
-   * add the current working session.
+   * Add the currently active working session.
    */
 
   if (currentlyWorking) {
@@ -164,17 +169,17 @@ function calculateAttendance(
       new Date();
 
 
-    const currentSession =
+    const currentSessionSeconds =
       (
         now -
         currentPunchIn
       ) / 1000;
 
 
-    if (currentSession > 0) {
+    if (currentSessionSeconds > 0) {
 
       totalWorkedSeconds +=
-        currentSession;
+        currentSessionSeconds;
 
     }
 
@@ -198,10 +203,10 @@ function calculateAttendance(
 
 
   /*
-   * Calculate expected logout.
+   * Expected logout.
    *
-   * Only calculate it when currently
-   * punched IN.
+   * Only meaningful when currently
+   * punched in.
    */
 
   let logoutDate = null;
@@ -275,14 +280,11 @@ function displayResult(result) {
 
     status.style.color =
       "#991b1b";
-
   }
 
 
   document
-    .getElementById(
-      "workedTime"
-    )
+    .getElementById("workedTime")
     .textContent =
       formatDuration(
         result.totalWorkedSeconds
@@ -290,9 +292,7 @@ function displayResult(result) {
 
 
   document
-    .getElementById(
-      "remainingTime"
-    )
+    .getElementById("remainingTime")
     .textContent =
       formatDuration(
         result.remainingSeconds
@@ -381,27 +381,21 @@ function formatTime(date) {
 function showLoading() {
 
   document
-    .getElementById(
-      "loading"
-    )
+    .getElementById("loading")
     .classList.remove(
       "hidden"
     );
 
 
   document
-    .getElementById(
-      "result"
-    )
+    .getElementById("result")
     .classList.add(
       "hidden"
     );
 
 
   document
-    .getElementById(
-      "error"
-    )
+    .getElementById("error")
     .classList.add(
       "hidden"
     );
@@ -412,9 +406,7 @@ function showLoading() {
 function hideLoading() {
 
   document
-    .getElementById(
-      "loading"
-    )
+    .getElementById("loading")
     .classList.add(
       "hidden"
     );
@@ -428,9 +420,7 @@ function showError(message) {
 
 
   document
-    .getElementById(
-      "result"
-    )
+    .getElementById("result")
     .classList.add(
       "hidden"
     );
