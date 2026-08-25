@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Attendance Calculator</title>
+
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+
+  <div class="container">
+
+    <h2>Attendance Calculator</h2>
+
+    <label for="workDuration">
+      Required Work Time
+    </label>
+
+    <select id="workDuration">
+      <option value="8">8 Hours</option>
+      <option value="6">6 Hours</option>
+      <option value="4">4 Hours</option>
+    </select>
+
+    <button id="calculate">
+      Calculate Logout Time
+    </button>
+
+    <div id="loading" class="hidden">
+      Reading punch logs...
+    </div>
+
+    <div id="result" class="result hidden">
+
+      <div class="status" id="status"></div>
+
+      <div class="result-row">
+        <span>Total Worked</span>
+        <strong id="workedTime">--</strong>
+      </div>
+
+      <div class="result-row">
+        <span>Remaining</span>
+        <strong id="remainingTime">--</strong>
+      </div>
+
+      <div class="logout">
+        <span>Expected Logout</span>
+        <strong id="logoutTime">--:--</strong>
+      </div>
+
+    </div>
+
+    <div id="error" class="error hidden"></div>
+
+  </div>
+
+  <script src="popup.js"></script>
+
+</body>
+</html>
